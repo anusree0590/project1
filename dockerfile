@@ -1,5 +1,4 @@
-HEAD
-FROM node:24-bookworm-slim
+FROM node:24-trixie-slim
 RUN apt-get update \
     && apt-get upgrade -y \
     && rm -rf /var/lib/apt/lists/*
