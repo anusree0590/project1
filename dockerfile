@@ -1,7 +1,11 @@
+HEAD
 FROM node:24-bookworm-slim
 RUN apt-get update \
     && apt-get upgrade -y \
     && rm -rf /var/lib/apt/lists/*
+
+FROM node:24-trixie-slim
+1d033ab (Update vulnerable container packages)
 
 WORKDIR /app
 ENV NODE_ENV=production
