@@ -8,3 +8,4 @@ uploads
 !.env.example
 test/.env.test
 *.log
+
