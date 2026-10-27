@@ -47,7 +47,7 @@ jobs:
 
       - name: Run tests
         run: npm test
-        
+
   container-scan:
     name: Build and scan container image
     runs-on: ubuntu-latest
@@ -67,6 +67,6 @@ jobs:
         with:
           image-ref: hackathon-starter:${{ github.sha }}
           format: table
-          exit-code: "1"
+          exit-code: '1'
           severity: HIGH,CRITICAL
           vuln-type: os,library
