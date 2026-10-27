@@ -1,0 +1,10 @@
+.git
+.github
+node_modules
+tmp
+uploads
+.env
+.env.*
+!.env.example
+test/.env.test
+*.log
