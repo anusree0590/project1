@@ -1,18 +1,25 @@
-FROM node:24-trixie-slim
-
-RUN apt-get update \
-    && apt-get upgrade -y \
-    && rm -rf /var/lib/apt/lists/*
+FROM node:24-trixie-slim AS build
 
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Copy the app before installing because its postinstall scripts use app files.
-COPY --chown=node:node . .
+# The app's postinstall scripts need the source tree and patches.
+COPY . .
 
-RUN npm ci --omit=dev
+# Install only runtime dependencies and compile styles before removing npm
+# from the final image.
+RUN npm ci --omit=dev \
+    && npm run scss \
+    && mkdir -p uploads
 
-USER node
+# Keep only the Node.js runtime and app files in the deployed image.
+# Distroless has no npm, shell, or general-purpose OS utilities.
+FROM gcr.io/distroless/nodejs24-debian13:nonroot
+
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY --from=build --chown=65532:65532 /app/ /app/
+
 EXPOSE 8080
-
-CMD ["npm", "start"]
+CMD ["/app/app.js"]
