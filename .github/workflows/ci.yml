@@ -47,3 +47,26 @@ jobs:
 
       - name: Run tests
         run: npm test
+        
+  container-scan:
+    name: Build and scan container image
+    runs-on: ubuntu-latest
+    needs: [code-quality, unit-tests]
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Build container image
+        run: docker build --tag hackathon-starter:${{ github.sha }} .
+
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: hackathon-starter:${{ github.sha }}
+          format: table
+          exit-code: "1"
+          severity: HIGH,CRITICAL
+          vuln-type: os,library
