@@ -4,7 +4,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 FROM node:24-trixie-slim
-1d033ab (Update vulnerable container packages)
+
 
 WORKDIR /app
 ENV NODE_ENV=production
