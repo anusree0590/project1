@@ -8,7 +8,7 @@ on:
 
 permissions:
   contents: read
-  id-token: write
+  
 
 jobs:
   code-quality:
@@ -83,6 +83,7 @@ jobs:
     needs: [code-quality, unit-tests]
     permissions:
       contents: read
+      id-token: write
 
     steps:
       - name: Check out code
