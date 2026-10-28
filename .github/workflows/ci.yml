@@ -47,21 +47,25 @@ jobs:
 
       - name: Run tests
         run: npm test
+
       - name: Upload LCOV coverage
         uses: actions/upload-artifact@v4
         with:
           name: lcov-coverage
           path: tmp/coverage/lcov.info
           if-no-files-found: error
+
   sonarqube:
     name: SonarQube analysis
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
     needs: [code-quality, unit-tests]
     runs-on: [self-hosted, Windows, X64]
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out code
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Download LCOV coverage
         uses: actions/download-artifact@v4
         with:
@@ -83,7 +87,6 @@ jobs:
     permissions:
       contents: read
       id-token: write
-
     steps:
       - name: Check out code
         uses: actions/checkout@v7
@@ -102,6 +105,7 @@ jobs:
           exit-code: '1'
           severity: HIGH,CRITICAL
           vuln-type: os,library
+
       - name: Configure AWS credentials
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         uses: aws-actions/configure-aws-credentials@v6
@@ -123,3 +127,43 @@ jobs:
         run: |
           docker tag hackathon-starter:${IMAGE_TAG} ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
           docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}
+
+  deploy-to-eks:
+    name: Deploy to Amazon EKS
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+    needs: [sonarqube, container-scan]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
+      EKS_NAMESPACE: ${{ vars.EKS_NAMESPACE }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.34.0
+
+      - name: Connect to EKS
+        run: aws eks update-kubeconfig --region "$AWS_REGION" --name "$EKS_CLUSTER_NAME"
+
+      - name: Apply Deployment and Service
+        run: |
+          AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          IMAGE_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${GITHUB_SHA}"
+          sed "s|IMAGE_URI|${IMAGE_URI}|g" k8s/app.yaml | kubectl apply -f -
+
+      - name: Show Kubernetes resources
+        run: kubectl get deployment,service -n "$EKS_NAMESPACE"
